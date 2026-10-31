@@ -418,9 +418,9 @@ const KIND = {
   sapling: { act: 'Выдернуть', en: 1, dur: .6, give: { wood: 1 }, xp: 1, ev: 'clear', r: 14, fx: 'leaf' },
   mush: { act: 'Собрать', en: 1, dur: .45, give: { mush: 1 }, xp: 2, ev: 'mush', r: 10, fx: 'leaf' },
   bed: { r: 32 },
-  house: { r: 92, solid: true, rest: 10, cd: 1800 },
+  house: { r: 108, solid: true, rest: 10, cd: 1800 },
   fire: { r: 20, rest: 3, cd: 600 },
-  workbench: { r: 42, solid: true }, mill: { r: 52, solid: true }, oven: { r: 40, solid: true }, spinner: { r: 34, solid: true }, hive: { r: 22, solid: true },
+  workbench: { r: 42, solid: true }, mill: { r: 62, solid: true }, oven: { r: 40, solid: true }, spinner: { r: 34, solid: true }, hive: { r: 20, solid: true },
   lantern: { r: 14 }, bench: { r: 40 }, logs: { r: 34 }, deco: { r: 22 }
 };
 const SPRITES = {
@@ -436,7 +436,7 @@ const SPRITES = {
 };
 // world width of the painted (non-pixel) sprites, in world units
 const WORLDW = {
-  house_s1: 200, house_s2: 197, house_s3: 244, sawhorse: 84, workbench: 104, oven: 82, forge: 90, spinwheel: 64, loom: 84, beehive: 54, mill_body: 66, mill_body2: 124, sapling: 36, sapling2: 36, hive_open: 60, rock_l: 64, rock_m: 58, rock_sm: 30,
+  house_s1: 232, house_s2: 229, house_s3: 284, sawhorse: 84, workbench: 104, oven: 82, forge: 90, spinwheel: 64, loom: 84, beehive: 46, mill_body: 66, mill_body2: 150, sapling: 36, sapling2: 36, hive_open: 52, rock_l: 64, rock_m: 58, rock_sm: 30,
   fence: 92, gate: 74, signpost: 28, signarch: 64, clothesline: 90, flowerbox: 58, flowerbox2: 66, flowerpot: 28, haybales: 56, haystack: 42, haycart: 84,
   wheelbarrow: 70, scarecrow: 50, barrel: 28, crate: 38, ladder: 26, lantern2: 20
 };
@@ -992,11 +992,11 @@ function interact(o) {
   }
   if (o.k === 'deco' || o.k === 'lantern' || o.k === 'bench' || o.k === 'logs' || o.k === 'fence') { walkTo(o, null); openSheet('deco', o); return; }
   if (!K || !K.act) { walkTo(o, null); return; }
-  if (o.k === 'berry' && o.rg && o.rg > now()) { toast('Ягоды поспеют через ' + fmt((o.rg - now()) / 1000)); walkTo(o, null); return; }
+  if (o.k === 'berry' && o.rg && o.rg > now()) { if (S.en < 1) return noEnergy(); walkTo(o, { type: 'work', o, dur: .8, clearBush: true }); return; }
   if (S.en < K.en) return noEnergy();
   walkTo(o, { type: 'work', o, dur: K.dur });
 }
-function toolFor(j) { const k = j.o && j.o.k; if (j.type === 'water') return 'wateringcan'; if (j.type === 'plant') return 't_shovel'; if (j.type === 'harvest') return 't_sickle'; if (j.type !== 'work') return null; return k === 'tree' || k === 'stump' ? 't_axe' : k === 'rock' || k === 'pebble' ? 't_pick' : k === 'bush' || k === 'weed' ? 't_sickle' : null; }
+function toolFor(j) { const k = j.o && j.o.k; if (j.clearBush) return 't_sickle'; if (j.type === 'water') return 'wateringcan'; if (j.type === 'plant') return 't_shovel'; if (j.type === 'harvest') return 't_sickle'; if (j.type !== 'work') return null; return k === 'tree' || k === 'stump' ? 't_axe' : k === 'rock' || k === 'pebble' ? 't_pick' : k === 'bush' || k === 'weed' ? 't_sickle' : null; }
 function walkTo(o, job) { const p = approachPoint(o); goTo(p.x, p.y, job); avatar.face = o.x; }
 function noEnergy() { haptic('error'); toast('Не хватает энергии. +1 каждую минуту', true); bump('pEn'); }
 function plant(o, c) {
@@ -1010,6 +1010,7 @@ function finishJob(j) {
   const o = j.o; if (!objs.includes(o)) return;
   const top = topOf(o);
   if (j.type === 'work') {
+    if (j.clearBush) { if (S.en < 1) return noEnergy(); spendEn(1); floatAt(o.x, top, 'en', '-1', 0, true); reward({ wood: 1, xp: 1 }, o.x, top - 18); burst(o.x, o.y - 12, 'leaf', 10); count('clear'); objs.splice(objs.indexOf(o), 1); haptic('light'); hud(); save(true); return; }
     const K = KIND[o.k]; if (S.en < K.en) return noEnergy();
     spendEn(K.en); floatAt(o.x, top, 'en', '-' + K.en, 0, true);
     if (K.hits) {
@@ -1300,7 +1301,7 @@ const leaves = Array.from({ length: reduce ? 10 : 34 }, () => ({ x: Math.random(
 function hintTarget() {
   const t = curTask(); if (!t || taskProg() >= t.n) return null;
   const isK = k => o => o.k === k;
-  const map = { chop: isK('tree'), berry: o => o.k === 'berry' && !(o.rg > now()), rock: o => o.k === 'rock' || o.k === 'pebble', stump: isK('stump'), mush: isK('mush'), clear: o => o.k === 'bush' || o.k === 'weed' || o.k === 'sapling',
+  const map = { chop: isK('tree'), berry: o => o.k === 'berry' && !(o.rg > now()), rock: o => o.k === 'rock' || o.k === 'pebble', stump: isK('stump'), mush: isK('mush'), clear: o => o.k === 'bush' || o.k === 'weed' || o.k === 'sapling' || (o.k === 'berry' && o.rg > now()),
     plant: o => o.k === 'bed' && !o.crop, plant_flax: o => o.k === 'bed' && !o.crop, harvest: o => o.k === 'bed' && (cropReady(o) || needsWater(o)), water: o => o.k === 'bed' && needsWater(o),
     house2: isK('house'), house3: isK('house'), make_planks: isK('workbench'), make_flour: isK('mill'), make_bread: isK('oven'), make_honey: o => o.k === 'hive' && jobReady(o), make_rope: isK('spinner'),
     upg_workbench: isK('workbench'), upg_oven: isK('oven'), upg_spinner: isK('spinner') };
@@ -1461,7 +1462,7 @@ function spawnNature(k) {
 }
 function regrow(count) {
   let made = 0; const total = objs.filter(o => NATURE.includes(o.k)).length;
-  for (let i = 0; i < count && total + made < 175; i++) { const r = Math.random(); const k = r < .34 ? 'weed' : r < .52 ? 'bush' : r < .72 ? 'sapling' : r < .84 ? 'pebble' : r < .92 ? 'rock' : 'mush'; if (spawnNature(k)) made++; }
+  for (let i = 0; i < count && total + made < 175; i++) { const r = Math.random(); const k = r < .28 ? 'weed' : r < .42 ? 'bush' : r < .56 ? 'berry' : r < .72 ? 'sapling' : r < .82 ? 'pebble' : r < .9 ? 'stump' : r < .95 ? 'rock' : 'mush'; if (spawnNature(k)) made++; }
   return made;
 }
 function growSaplings() {
@@ -1498,7 +1499,7 @@ Promise.all(names.map(n => new Promise(r => { const i = new Image(); i.onload = 
     $('splashBar').style.width = '100%';
     setTimeout(() => { $('splash').classList.add('out'); setTimeout(() => $('splash').hidden = true, 500); }, 250);
     if (!S.char || S.char.base == null) openCreator();
-    if (location.hash === '#debug') window.__wn = { drawChar, IMG, HATS, mk, get S() { return S; }, get objs() { return objs; }, get avatar() { return avatar; }, scr: (x, y) => [(x - view.x) * zoom, (y - view.y) * zoom], rebuildBlock };
+    if (location.hash === '#debug') window.__wn = { drawChar, IMG, HATS, mk, resolve, get S() { return S; }, get objs() { return objs; }, get avatar() { return avatar; }, scr: (x, y) => [(x - view.x) * zoom, (y - view.y) * zoom], rebuildBlock };
     requestAnimationFrame(frame);
   }).catch(err => { console.error(err); $('splash').querySelector('p').textContent = 'Не удалось загрузить игру. Обновите страницу.'; });
 })();
