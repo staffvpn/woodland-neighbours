@@ -9,6 +9,7 @@ interface HouseRow {
   shape: number;
   x: number;
   y: number;
+  nickname: string;
 }
 
 interface UserRow {
@@ -19,7 +20,7 @@ interface UserRow {
 
 export async function handleListHouses(env: Env): Promise<Response> {
   const { results } = await env.DB.prepare(
-    `SELECT h.id, h.owner_telegram_id, h.shape, h.x, h.y, u.last_seen_at
+    `SELECT h.id, h.owner_telegram_id, h.shape, h.x, h.y, u.nickname, u.last_seen_at
      FROM houses h JOIN users u ON u.telegram_id = h.owner_telegram_id`,
   ).all<HouseRow & { last_seen_at: number }>();
 
@@ -27,6 +28,7 @@ export async function handleListHouses(env: Env): Promise<Response> {
   const dtos = (results ?? []).map((row) => ({
     id: row.id,
     ownerTelegramId: row.owner_telegram_id,
+    ownerNickname: row.nickname,
     shape: row.shape,
     x: row.x,
     y: row.y,
