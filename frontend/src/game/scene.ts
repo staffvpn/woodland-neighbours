@@ -40,8 +40,12 @@ export function createGameScene(container: HTMLElement): GameScene {
   sun.name = "sun";
   scene.add(sun);
 
+  const groundTexture = new THREE.TextureLoader().load("/src/assets/textures/ground-moss.svg");
+  groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+  groundTexture.repeat.set(20, 20);
+
   const groundGeometry = new THREE.PlaneGeometry(200, 200);
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: "#7a6a3a" });
+  const groundMaterial = new THREE.MeshStandardMaterial({ map: groundTexture });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#a9794f"/>
+  <g>
+    <rect y="0" width="512" height="64" fill="#b4835a"/>
+    <rect y="64" width="512" height="64" fill="#9c7049"/>
+    <rect y="128" width="512" height="64" fill="#ad7c52"/>
+    <rect y="192" width="512" height="64" fill="#a3764c"/>
+    <rect y="256" width="512" height="64" fill="#b4835a"/>
+    <rect y="320" width="512" height="64" fill="#9c7049"/>
+    <rect y="384" width="512" height="64" fill="#ad7c52"/>
+    <rect y="448" width="512" height="64" fill="#a3764c"/>
+  </g>
+  <g stroke="#6b4a30" stroke-width="2" opacity="0.6">
+    <line x1="0" y1="62" x2="512" y2="62"/>
+    <line x1="0" y1="126" x2="512" y2="126"/>
+    <line x1="0" y1="190" x2="512" y2="190"/>
+    <line x1="0" y1="254" x2="512" y2="254"/>
+    <line x1="0" y1="318" x2="512" y2="318"/>
+    <line x1="0" y1="382" x2="512" y2="382"/>
+    <line x1="0" y1="446" x2="512" y2="446"/>
+    <line x1="0" y1="510" x2="512" y2="510"/>
+  </g>
+  <g stroke="#7d5838" stroke-width="1.2" opacity="0.45">
+    <line x1="0" y1="18" x2="512" y2="14"/>
+    <line x1="0" y1="34" x2="512" y2="38"/>
+    <line x1="0" y1="82" x2="512" y2="78"/>
+    <line x1="0" y1="102" x2="512" y2="106"/>
+    <line x1="0" y1="146" x2="512" y2="142"/>
+    <line x1="0" y1="166" x2="512" y2="170"/>
+    <line x1="0" y1="210" x2="512" y2="206"/>
+    <line x1="0" y1="230" x2="512" y2="234"/>
+    <line x1="0" y1="274" x2="512" y2="270"/>
+    <line x1="0" y1="294" x2="512" y2="298"/>
+    <line x1="0" y1="338" x2="512" y2="334"/>
+    <line x1="0" y1="358" x2="512" y2="362"/>
+    <line x1="0" y1="402" x2="512" y2="398"/>
+    <line x1="0" y1="422" x2="512" y2="426"/>
+    <line x1="0" y1="466" x2="512" y2="462"/>
+    <line x1="0" y1="486" x2="512" y2="490"/>
+  </g>
+</svg>

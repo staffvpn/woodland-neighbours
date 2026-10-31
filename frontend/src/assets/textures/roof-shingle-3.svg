@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <pattern id="shingle3" width="64" height="32" patternUnits="userSpaceOnUse">
+      <rect width="64" height="32" fill="#5a2f22"/>
+      <rect x="0" y="0" width="30" height="28" rx="3" fill="#6f3c2b" stroke="#3d1f16" stroke-width="1.5"/>
+      <rect x="32" y="0" width="30" height="28" rx="3" fill="#653627" stroke="#3d1f16" stroke-width="1.5"/>
+      <rect x="16" y="16" width="30" height="28" rx="3" fill="#6f3c2b" stroke="#3d1f16" stroke-width="1.5"/>
+      <rect x="-16" y="16" width="30" height="28" rx="3" fill="#653627" stroke="#3d1f16" stroke-width="1.5"/>
+      <rect x="48" y="16" width="30" height="28" rx="3" fill="#653627" stroke="#3d1f16" stroke-width="1.5"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" fill="url(#shingle3)"/>
+</svg>
