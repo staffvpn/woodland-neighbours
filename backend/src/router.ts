@@ -4,6 +4,8 @@ import { handleListHouses, handlePlaceHouse } from "./handlers/houses";
 import { handleListResources, handleHarvest } from "./handlers/resources";
 import { handleListItems, handlePlaceItem } from "./handlers/items";
 import { handleListGifts, handleGiveGift } from "./handlers/gifts";
+import { handleFollow, handleUnfollow, handleListFollows } from "./handlers/follows";
+import { handleCampfireOnline } from "./handlers/campfire";
 import { requireAuth } from "./auth-middleware";
 
 export interface Env {
@@ -70,6 +72,25 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       .json<{ itemType?: unknown }>()
       .catch(() => ({}) as { itemType?: unknown });
     return handleGiveGift(env, auth.user, Number(giftsMatch[1]), body.itemType);
+  }
+
+  if (request.method === "GET" && url.pathname === "/campfire/online") {
+    return handleCampfireOnline(env);
+  }
+
+  if (request.method === "GET" && url.pathname === "/follows") {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
+    return handleListFollows(env, auth.user);
+  }
+
+  const followMatch = url.pathname.match(/^\/follows\/(\d+)$/);
+  if (followMatch) {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
+    const targetId = Number(followMatch[1]);
+    if (request.method === "POST") return handleFollow(env, auth.user, targetId);
+    if (request.method === "DELETE") return handleUnfollow(env, auth.user, targetId);
   }
 
   return new Response(JSON.stringify({ error: "not_found" }), {
