@@ -10,6 +10,7 @@ import { renderResourceNodes, findResourceNodeIdFromIntersect } from "./game/res
 import { InventoryDrawer } from "./ui/InventoryDrawer";
 import { DecorationDrawer } from "./ui/DecorationDrawer";
 import { GiftDrawer } from "./ui/GiftDrawer";
+import { buildCampfire, renderOnlineAvatars } from "./game/campfire";
 import { apiGet, apiPost, type HouseDTO, type ResourceNodeDTO, type UserDTO } from "./api/client";
 
 const BASE_RADIUS = 8;
@@ -36,6 +37,15 @@ export function App() {
     if (!containerRef.current) return;
     gameRef.current = createGameScene(containerRef.current);
     addRiver(gameRef.current.scene);
+    buildCampfire(gameRef.current.scene);
+
+    function pollOnline() {
+      apiGet<{ telegramId: number; nickname: string }[]>("/campfire/online").then((online) => {
+        if (gameRef.current) renderOnlineAvatars(gameRef.current.scene, online);
+      });
+    }
+    pollOnline();
+    const onlineInterval = setInterval(pollOnline, 20_000);
 
     apiGet<HouseDTO[]>("/houses").then((houses) => {
       if (!gameRef.current) return;
@@ -111,6 +121,7 @@ export function App() {
 
     return () => {
       cancelAnimationFrame(characterFrame);
+      clearInterval(onlineInterval);
       gameRef.current?.renderer.domElement.removeEventListener("click", onClick);
       gameRef.current?.dispose();
     };
