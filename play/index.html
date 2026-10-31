@@ -230,7 +230,7 @@ const HAIRSW = ['#8e4b22', '#c2501f', '#e0bb6e', '#3b2a22', '#d8d2c8'];
 const HAIRT = [null, { c: '#c4501c' }, { c: '#e4bc6a', ex: ['screen', 'rgba(120,90,40,.55)'] }, { c: '#3b2a22', ex: ['multiply', 'rgba(70,60,58,1)'] }, { c: '#e6e0d6', ex: ['screen', 'rgba(150,145,140,.8)'] }];
 const OUTFITS = [{ n: 'Лесной', t: null }, { n: 'Брусника', t: { c: '#a8302a' } }, { n: 'Васильки', t: { c: '#3f639a' } }, { n: 'Медовый', t: { c: '#c08c2c' } }];
 const HATS = [[null, 'Без шапки']];
-const TOOLPTS = {"t_axe": [13.5, 112.6, 34.9, 24.1], "t_pick": [34.1, 108.1, 59.1, 16.4], "t_shovel": [16.9, 122.8, 41.1, 54.2], "t_sickle": [11.9, 108.3, 47.9, 24.3]};
+const TOOLPTS = {"t_axe": [13.5, 112.6, 34.9, 24.1], "t_pick": [34.1, 108.1, 59.1, 16.4], "t_shovel": [16.9, 122.8, 41.1, 54.2], "t_sickle": [11.9, 108.3, 47.9, 24.3], "wateringcan": [30, 6, 131, 42]};
 const ACCS = [[null, 'Без'], ['acc_scarfg', 'Зелёный шарф'], ['acc_scarfr', 'Красный шарф'], ['acc_bag', 'Сумка'], ['acc_bowred', 'Красный бант'], ['acc_bowpink', 'Розовый бант'], ['acc_sunflower', 'Подсолнух']];
 const HATP = { hat_beanie: [1.08, .84, 6, 0, 1], hat_straw: [1.45, .72, 10, 0, 1], hat_sun: [1.5, .66, 8, 0, 1], hat_cap: [1.08, .9, 4, 0, .8], hat_scarf: [1.2, .6, -2, -6, 1], hat_wreath: [1.05, .75, 6, 0, 1], hat_witch: [1.5, .8, 2, 0, 1] };
 const HEAD = /*HEAD*/{ boy: { cx: 126, w: 160, brow: 86 }, girl: { cx: 336, w: 152, brow: 96 } };
@@ -318,14 +318,18 @@ function drawChar(g, c, t, wl) {
       else th = -.8 + (.55) * ((ph - .72) / .28);
       aR = th; aL = th * .35 + .1;
     } else if (tool === 't_sickle') { aR = -.5 - (Math.sin(ph * 6.283) * .5 + .5) * 1.1; aL = .15; }
+    else if (tool === 't_shovel') {
+      if (ph < .4) aR = -.2 - .75 * eo(ph / .4); else if (ph < .55) aR = -.95 + .85 * ei((ph - .4) / .15); else aR = -.1 - .3 * ((ph - .55) / .45);
+      aL = aR * .8 + .05;
+    } else if (tool === 'wateringcan') { aR = -1.05 + Math.sin(t * 3) * .05; aL = .1; }
     else { aR = -.25 - (Math.sin(ph * 6.283) * .5 + .5) * .45; aL = aR * .7; }
   }
   arm(P.armL, off.armL, M.shL, aL);
   if (tool) {
     const tp = TOOLPTS[tool], im = IMG[tool], hand = M.handR;
     const vx = tp[2] - tp[0], vy = tp[3] - tp[1], len = Math.hypot(vx, vy);
-    const want = tool === 't_shovel' ? Math.atan2(.95, .3) : Math.atan2(.76, .64), have = Math.atan2(vy, vx);
-    const k = (tool === 't_shovel' ? 175 : tool === 't_sickle' ? 120 : 178) / im.height;
+    const want = tool === 't_shovel' ? Math.atan2(1, .05) - aR * .9 : tool === 'wateringcan' ? -aR + .55 + Math.sin(t * 3) * .05 : Math.atan2(.76, .64), have = Math.atan2(vy, vx);
+    const k = (tool === 't_shovel' ? 175 : tool === 't_sickle' ? 120 : tool === 'wateringcan' ? 95 : 178) / im.height;
     g.save(); g.translate(M.shR[0], M.shR[1]); g.rotate(aR); g.translate(-M.shR[0], -M.shR[1]);
     g.translate(hand[0], hand[1]); g.rotate(want - have); g.scale(k, k); g.drawImage(im, -tp[0], -tp[1]); g.restore();
   }
@@ -477,6 +481,7 @@ const TASKS = [
   T('Трава по пояс', 'Расчистите 8 кустов и зарослей травы', 'clear', 8, { coins: 25, xp: 12 }),
   T('Свой огород', 'Поставьте 3 грядки через «Стройку»', 'build_bed', 3, { coins: 20, xp: 10 }),
   T('Первый посев', 'Посадите что-нибудь на грядках 3 раза', 'plant', 3, { xp: 15 }),
+  T('Живая вода', 'Полейте грядки 3 раза', 'water', 3, { coins: 20, xp: 10 }),
   T('Первый урожай', 'Соберите урожай 3 раза', 'harvest', 3, { coins: 40, xp: 15 }),
   T('На ярмарку', 'Продайте 10 любых предметов в лавке', 'sell', 10, { xp: 15, gems: 1 }),
   T('Корчевание', 'Выкорчуйте 6 пней', 'stump', 6, { coins: 40, xp: 20 }),
@@ -638,14 +643,21 @@ function buildWorld() {
 }
 
 // ---------- procedural art ----------
+function cropRaw(o) { if (!o.crop) return 0; return (o.g || 0) + (o.wt ? (now() - o.wt) / 1000 : 0); }
+const cropLong = o => CROPS[o.crop].dur >= 240;
+function cropSec(o) { if (!o.crop) return 0; const d = CROPS[o.crop].dur, r = cropRaw(o); if (!o.wt) return o.g || 0; if (cropLong(o) && (o.w || 0) < 2) return Math.min(r, d * .5); return Math.min(r, d); }
+function needsWater(o) { if (!o.crop) return false; if (!o.wt) return true; return cropLong(o) && (o.w || 0) < 2 && cropRaw(o) >= CROPS[o.crop].dur * .5; }
+const cropP = o => o.crop ? clamp(cropSec(o) / CROPS[o.crop].dur, 0, 1) : 0;
+const cropReady = o => !!o.crop && cropP(o) >= 1;
 const BEDW = 76, CROPSPR = { wheat: 'crop_wheat', carrot: 'crop_carrot', sunflower: 'crop_sun', flax: 'crop_flax', pumpkin: 'crop_pumpkin' };
 function bedImg(g, n, x, y, w, alpha) { const im = IMG[n]; if (!im) return; const h = im.height * w / im.width; if (alpha != null) g.globalAlpha = alpha; g.drawImage(im, x - w / 2, y - h + 4, w, h); g.globalAlpha = 1; }
 function drawBed(g, x, y, o, t) {
   g.save();
   g.fillStyle = 'rgba(20,12,4,.28)'; g.beginPath(); g.ellipse(x + 3, y, BEDW * .52, 7, 0, 0, 6.28); g.fill();
   if (!o.crop) { bedImg(g, 'bed_dug', x, y + 6, BEDW); g.restore(); return; }
-  const p = clamp((now() - o.pt) / 1000 / CROPS[o.crop].dur, 0, 1), cs = CROPSPR[o.crop];
-  if (p < .18) bedImg(g, 'bed_water', x, y + 6, BEDW * .9 * 1.06);
+  const p = cropP(o), cs = CROPSPR[o.crop], wetNow = o.wt && !needsWater(o) && now() - o.wt < 40000;
+  if (p < .12 && !o.wt) bedImg(g, 'bed_sprout', x, y + 6, BEDW);
+  else if (wetNow && p < .55) bedImg(g, 'bed_water', x, y + 6, BEDW * .95);
   else if (p < 1 || !cs) {
     bedImg(g, 'bed_sprout', x, y + 6, BEDW);
     if (cs && p > .55) { const k = (p - .55) / .45; g.save(); g.translate(x, y + 6); g.scale(1, .55 + .45 * k); bedImg(g, cs, 0, 0, BEDW * .92, .25 + k * .55); g.restore(); }
@@ -767,6 +779,7 @@ function makeIcons() {
   fromSprite('i_flour', 'flour'); fromSprite('i_butter', 'oil'); fromSprite('i_rope', 'rope'); fromSprite('crate', 'crate'); fromSprite('barrel', 'barrel');
   fromSprite('crop_flax', 'flax');
   fromSprite('bed_dug', 'bed');
+  draw('water', g => { const gr = g.createRadialGradient(40, 52, 4, 48, 56, 34); gr.addColorStop(0, '#bfe6ff'); gr.addColorStop(1, '#2f7fc4'); g.fillStyle = gr; g.beginPath(); g.moveTo(48, 10); g.bezierCurveTo(60, 32, 78, 48, 78, 62); g.arc(48, 62, 30, 0, Math.PI); g.bezierCurveTo(18, 48, 36, 32, 48, 10); g.fill(); g.strokeStyle = '#1d4f7a'; g.lineWidth = 4; g.stroke(); g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.ellipse(38, 58, 6, 10, -.4, 0, 6.28); g.fill(); });
   fromSprite('i_honey', 'honey'); fromSprite('i_comb', 'comb');
   fromSprite('i_planks', 'planks');
   fromSprite('i_bread', 'bread');
@@ -801,6 +814,7 @@ function resolve(o) {
   if (o.k === 'house') { if (!o.stage) o.stage = 1; o.n = HOUSE[o.stage].spr; o.s = 1; }
   else if (PROD[o.k]) { o.lv = o.lv || 1; o.n = PROD[o.k].lv[o.lv - 1].spr; o.s = 1; }
   else if (o.k === 'hive') { o.n = 'beehive'; o.s = 1; }
+  else if (o.k === 'bed' && o.crop && o.pt && o.wt == null) { o.g = 0; o.wt = o.pt; o.w = 2; delete o.pt; }
   else if (o.k === 'rock') { o.n = ROCKN[(o.hp || 3) - 1]; if (o.s > 1.1 || o.s < .85) o.s = 1; }
   else if (o.k === 'fire') { o.n = 'campfire'; o.s = .5; }
   else if (o.k === 'lantern') { o.n = 'lantern_small'; o.s = .85; }
@@ -955,8 +969,8 @@ function interact(o) {
   avatar.target = o; tapMark = null;
   if (o.k === 'bed') {
     if (!o.crop) { openSheet('plant', o); walkTo(o, null); return; }
-    const left = CROPS[o.crop].dur - (now() - o.pt) / 1000;
-    if (left > 0) { openSheet('plant', o); walkTo(o, null); return; }
+    if (needsWater(o)) { walkTo(o, { type: 'water', o, dur: 1.3 }); return; }
+    if (!cropReady(o)) { openSheet('plant', o); walkTo(o, null); return; }
     if (S.en < 1) return noEnergy();
     walkTo(o, { type: 'harvest', o, dur: .8 }); return;
   }
@@ -982,14 +996,14 @@ function interact(o) {
   if (S.en < K.en) return noEnergy();
   walkTo(o, { type: 'work', o, dur: K.dur });
 }
-function toolFor(j) { const k = j.o && j.o.k; if (j.type === 'plant') return 't_shovel'; if (j.type === 'harvest') return 't_sickle'; if (j.type !== 'work') return null; return k === 'tree' || k === 'stump' ? 't_axe' : k === 'rock' || k === 'pebble' ? 't_pick' : k === 'bush' || k === 'weed' ? 't_sickle' : null; }
+function toolFor(j) { const k = j.o && j.o.k; if (j.type === 'water') return 'wateringcan'; if (j.type === 'plant') return 't_shovel'; if (j.type === 'harvest') return 't_sickle'; if (j.type !== 'work') return null; return k === 'tree' || k === 'stump' ? 't_axe' : k === 'rock' || k === 'pebble' ? 't_pick' : k === 'bush' || k === 'weed' ? 't_sickle' : null; }
 function walkTo(o, job) { const p = approachPoint(o); goTo(p.x, p.y, job); avatar.face = o.x; }
 function noEnergy() { haptic('error'); toast('Не хватает энергии. +1 каждую минуту', true); bump('pEn'); }
 function plant(o, c) {
   const C = CROPS[c];
   if (S.coins < C.cost) { haptic('error'); toast('Не хватает монет', true); return; }
   if (S.en < 1) return noEnergy();
-  closeSheet(); avatar.target = o; walkTo(o, { type: 'plant', o, crop: c, dur: .7 });
+  closeSheet(); avatar.target = o; walkTo(o, { type: 'plant', o, crop: c, dur: 1.1 });
 }
 function topOf(o) { return o.y - Math.min(70, dimsOf(o).h * .6); }
 function finishJob(j) {
@@ -1017,11 +1031,15 @@ function finishJob(j) {
   } else if (j.type === 'harvest') {
     const C = CROPS[o.crop]; spendEn(1); floatAt(o.x, top, 'en', '-1', 0, true);
     reward({ [o.crop]: C.yield, xp: C.xp }, o.x, top - 18); burst(o.x, o.y - 6, 'leaf', 10);
-    o.crop = null; o.pt = 0; count('harvest'); haptic('medium');
+    o.crop = null; o.g = 0; o.wt = 0; o.w = 0; count('harvest'); haptic('medium');
   } else if (j.type === 'plant') {
     const C = CROPS[j.crop]; if (S.coins < C.cost || S.en < 1) return;
-    S.coins -= C.cost; spendEn(1); o.crop = j.crop; o.pt = now();
+    S.coins -= C.cost; spendEn(1); o.crop = j.crop; o.g = 0; o.wt = 0; o.w = 0; toast('Посажено. Теперь полейте грядку');
     floatAt(o.x, top, 'coins', '-' + C.cost, 0, true); burst(o.x, o.y, 'dust', 8); count('plant'); count('plant_' + j.crop); haptic('light');
+  } else if (j.type === 'water') {
+    if (!needsWater(o)) return;
+    if (!o.wt) { o.g = 0; o.wt = now(); o.w = 1; } else { o.g = CROPS[o.crop].dur * .5; o.wt = now(); o.w = 2; }
+    reward({ xp: 1 }, o.x, top); count('water'); haptic('light');
   } else if (j.type === 'rest') {
     const K = KIND[o.k]; o.cd = now() + K.cd * 1000; reward({ en: K.rest }, o.x, top); haptic('ok');
   } else if (j.type === 'collect') {
@@ -1078,7 +1096,7 @@ $('bbOk').onclick = () => {
   pay(b.cost);
   const o = { id: S.seq++, k: b.spr && !['fire', 'lantern', 'bench', 'logs'].includes(b.id) ? 'deco' : b.id, x: Math.round(ghost.x), y: Math.round(ghost.y), s: b.s || 1, f: 1 };
   if (o.k === 'deco') { o.n = b.spr; o.r = b.r || 20; }
-  if (b.id === 'bed') { o.crop = null; o.pt = 0; }
+  if (b.id === 'bed') { o.crop = null; o.g = 0; o.wt = 0; }
   if (b.id === 'house') o.stage = 1;
   if (b.id === 'hive') o.ht = now();
   resolve(o); objs.push(o); rebuildBlock(); burst(o.x, o.y, 'dust', 14); gainXp(b.xp); floatAt(o.x, o.y - 40, 'xp', '+' + b.xp, 0);
@@ -1092,7 +1110,7 @@ const parts = [], floats = [], smoke = [], embers = [];
 let tapMark = null;
 const perf = () => performance.now() / 1000;
 function burst(x, y, fx, n) {
-  const COL = { chips: ['#c9955a', '#8a5a2e', '#e3b77a'], dust: ['#b4ab98', '#8d8576', '#d2c9b4'], leaf: ['#d6702a', '#e9a23a', '#7fae46', '#c4521e'], berry: ['#c7302a', '#7b1f3a', '#e05a4a', '#6fa043'], honey: ['#f2b720', '#ffd75e', '#e08a10'] }[fx] || ['#ccc'];
+  const COL = { chips: ['#c9955a', '#8a5a2e', '#e3b77a'], dust: ['#b4ab98', '#8d8576', '#d2c9b4'], leaf: ['#d6702a', '#e9a23a', '#7fae46', '#c4521e'], berry: ['#c7302a', '#7b1f3a', '#e05a4a', '#6fa043'], dirt: ['#6a4a2a', '#4d331b', '#8a6339'], honey: ['#f2b720', '#ffd75e', '#e08a10'] }[fx] || ['#ccc'];
   for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - .5) * 120, vy: -60 - Math.random() * 90, a: 0, life: .6 + Math.random() * .5, c: COL[i % COL.length], r: 1.6 + Math.random() * 2, rot: Math.random() * 6 });
 }
 function floatAt(x, y, k, text, i, neg) { floats.push({ x, y, k, text, t0: perf() + (i || 0) * .12, neg }); }
@@ -1179,8 +1197,8 @@ function openSheet(kind, arg) {
     for (const k of keys) h += '<div class="card">' + icon(k) + '<div class="t"><b>' + ITEMS[k].n + ' · ' + S.inv[k] + '</b><div class="cost"><em>' + icon('coins') + ITEMS[k].sell + ' за шт.</em></div></div><button class="btn sm ghost" data-act="sell1" data-k="' + k + '">1</button><button class="btn sm" data-act="sellall" data-k="' + k + '">Все</button></div>';
     h += '<div class="sec">Энергия</div><div class="card">' + icon('en') + '<div class="t"><b>Полная энергия</b><span>Восполнить до ' + EN_MAX + '</span>' + costHtml({ gems: 5 }) + '</div><button class="btn sm ' + (S.gems >= 5 ? '' : 'no') + '" data-act="refill">Купить</button></div>';
   } else if (kind === 'plant' && arg && arg.crop) {
-    const o = arg, C = CROPS[o.crop], p = clamp((now() - o.pt) / 1000 / C.dur, 0, 1); title = 'Грядка';
-    h += '<div class="card hi">' + icon(o.crop) + '<div class="t"><b>' + C.n + '</b><span>' + (p >= 1 ? 'Созрело' : 'Созреет через ' + fmt(C.dur - (now() - o.pt) / 1000)) + '</span>' + progHtml(p) + '</div></div>';
+    const o = arg, C = CROPS[o.crop], p = cropP(o), nw = needsWater(o); title = 'Грядка';
+    h += '<div class="card hi">' + icon(o.crop) + '<div class="t"><b>' + C.n + '</b><span>' + (p >= 1 ? 'Созрело' : nw ? 'Нужен полив, без воды не растёт' : 'Созреет через ' + fmt(C.dur - cropSec(o)) + (cropLong(o) && (o.w || 0) < 2 ? ' · ещё один полив на середине' : '')) + '</span>' + progHtml(p) + '</div></div>';
     h += '<div class="sec">Грядка</div><div class="card">' + icon('bed') + '<div class="t"><b>Убрать грядку</b><span>Посадки пропадут. Вернётся 5 монет.</span></div><button class="btn sm ghost" data-act="rmbed">Убрать</button></div>';
   } else if (kind === 'plant') {
     title = 'Что посадить';
@@ -1283,7 +1301,7 @@ function hintTarget() {
   const t = curTask(); if (!t || taskProg() >= t.n) return null;
   const isK = k => o => o.k === k;
   const map = { chop: isK('tree'), berry: o => o.k === 'berry' && !(o.rg > now()), rock: o => o.k === 'rock' || o.k === 'pebble', stump: isK('stump'), mush: isK('mush'), clear: o => o.k === 'bush' || o.k === 'weed' || o.k === 'sapling',
-    plant: o => o.k === 'bed' && !o.crop, plant_flax: o => o.k === 'bed' && !o.crop, harvest: o => o.k === 'bed' && o.crop && now() - o.pt >= CROPS[o.crop].dur * 1000,
+    plant: o => o.k === 'bed' && !o.crop, plant_flax: o => o.k === 'bed' && !o.crop, harvest: o => o.k === 'bed' && (cropReady(o) || needsWater(o)), water: o => o.k === 'bed' && needsWater(o),
     house2: isK('house'), house3: isK('house'), make_planks: isK('workbench'), make_flour: isK('mill'), make_bread: isK('oven'), make_honey: o => o.k === 'hive' && jobReady(o), make_rope: isK('spinner'),
     upg_workbench: isK('workbench'), upg_oven: isK('oven'), upg_spinner: isK('spinner') };
   const f = map[t.ev]; if (!f) return null;
@@ -1302,8 +1320,10 @@ function frame(ts) {
     } else { const st = Math.min(d, 120 * dt); avatar.x += dx / d * st; avatar.y += dy / d * st; if (Math.abs(dx) > 2) avatar.dir = dx < 0 ? -1 : 1; }
   }
   if (avatar.work) {
-    const P2 = (avatar.tool === 't_axe' || avatar.tool === 't_pick') ? .62 : .42, el = t - avatar.work.t0, ph = (el % P2) / P2, n = Math.floor(el / P2);
+    const P2 = (avatar.tool === 't_axe' || avatar.tool === 't_pick') ? .62 : avatar.tool === 't_shovel' ? .55 : .42, el = t - avatar.work.t0, ph = (el % P2) / P2, n = Math.floor(el / P2);
     avatar.swing = ph;
+    if (avatar.tool === 't_shovel' && ph >= .55 && avatar.work.hits !== n) { avatar.work.hits = n; const o = avatar.work.job.o; burst(o.x + (avatar.x < o.x ? -18 : 18), o.y + 2, 'dirt', 8); haptic('light'); }
+    if (avatar.tool === 'wateringcan' && Math.random() < .7) { const o = avatar.work.job.o; parts.push({ x: o.x + (avatar.x < o.x ? -14 : 14) + (Math.random() - .5) * 18, y: o.y - 22, vx: (Math.random() - .5) * 20, vy: 40 + Math.random() * 30, a: 0, life: .45, c: Math.random() < .5 ? '#9fd4ff' : '#5aa8e6', r: 1.4 + Math.random(), rot: 0 }); }
     if ((avatar.tool === 't_axe' || avatar.tool === 't_pick') && ph >= .72 && avatar.work.hits !== n) { avatar.work.hits = n; const o = avatar.work.job.o; o.hitT = t; burst(o.x + (avatar.x < o.x ? -6 : 6), o.y - 16, KIND[o.k] && KIND[o.k].fx || 'chips', 6); haptic('light'); }
   } else avatar.swing = 0;
   if (avatar.work && t - avatar.work.t0 >= avatar.work.job.dur) { const j = avatar.work.job; avatar.work = null; finishJob(j); }
@@ -1383,7 +1403,7 @@ function frame(ts) {
     else if (o.k === 'lantern') { const img = IMG.lantern_small, s = o.s, lx = o.x + (38 - img.width / HD / 2) * s, ly = o.y + (32 - img.height / HD + 3) * s; glow(lx, ly, 42, '255,186,90', .12); glow(lx, ly, 9, '255,226,160', .3); }
     else if (o.k === 'house' && o.stage === 3) glow(o.x - 10, o.y - 60, 120, '255,168,78', .07);
     else if ((o.k === 'oven') && o.job && !jobReady(o)) { const p = sprPt(o, 'mouth'); if (p) { const fk = .85 + .12 * Math.sin(t * 11); glow(p[0], p[1], 46, '255,140,50', .2 * fk); } }
-    else if (o.k === 'bed' && o.crop && now() - o.pt >= CROPS[o.crop].dur * 1000) glow(o.x, o.y - 8, 30, '255,230,140', .14 + .06 * Math.sin(t * 4));
+    else if (o.k === 'bed' && cropReady(o)) glow(o.x, o.y - 8, 30, '255,230,140', .14 + .06 * Math.sin(t * 4));
   }
   for (let i = embers.length - 1; i >= 0; i--) { const e = embers[i]; e.a += dt; e.y -= 34 * dt; e.x += (e.vx + Math.sin(e.a * 6 + e.ph) * 8) * dt; if (e.a > 1.3) { embers.splice(i, 1); continue; } glow(e.x, e.y, 3.5, e.a < .6 ? '255,214,90' : '255,140,50', (1 - e.a / 1.3) * .9); }
   ctx.globalCompositeOperation = 'source-over';
@@ -1396,9 +1416,10 @@ function frame(ts) {
     if (o.k === 'hive') { if (jobReady(o)) k = 'honey'; else p = (now() - o.ht) / 1000 / HIVE_SEC; }
     else if (PROD[o.k] && o.job) { const rc = RECIPES[o.job.r]; k = Object.keys(rc.out)[0]; if (!jobReady(o)) { p = (now() - o.job.t0) / 1000 / rc.dur; } }
     else if (o.k === 'house' && o.stage < 3) k = 'hammer';
+    else if (o.k === 'bed' && needsWater(o)) k = 'water';
     if (!k && p < 0) continue;
     const d = dimsOf(o); const [bx, by0] = SC(o.x, o.y - Math.min(d.h, 150) - 8); if (bx < -40 || bx > W + 40 || by0 < -40 || by0 > H + 40) continue;
-    const ready = p < 0 && k !== 'hammer', bob = ready ? Math.sin(t * 4) * 4 * dpr : 0, by = by0 + bob, r = (ready ? 19 : 15) * dpr;
+    const ready = p < 0 && k !== 'hammer' && k !== 'water', bob = ready ? Math.sin(t * 4) * 4 * dpr : 0, by = by0 + bob, r = (ready ? 19 : 15) * dpr;
     ctx.fillStyle = 'rgba(40,26,12,.88)'; ctx.beginPath(); ctx.arc(bx, by, r + 3 * dpr, 0, 6.28); ctx.fill();
     ctx.fillStyle = ready ? '#fff1d0' : 'rgba(245,230,198,.15)'; ctx.beginPath(); ctx.arc(bx, by, r, 0, 6.28); ctx.fill();
     if (p >= 0) { ctx.strokeStyle = '#efa94a'; ctx.lineWidth = 3.5 * dpr; ctx.beginPath(); ctx.arc(bx, by, r + 1 * dpr, -Math.PI / 2, -Math.PI / 2 + clamp(p, 0, 1) * 6.283); ctx.stroke(); }
