@@ -895,7 +895,16 @@ function reward(r, x, y) {
   for (const k in r) if (ITEMS[k]) { addInv(k, r[k]); floatAt(x, y, k, '+' + r[k], i++); }
 }
 function curTask() { return TASKS[S.task] || null; }
-function taskProg() { const t = curTask(); if (!t) return 0; return clamp((S.cnt[t.ev] || 0) - S.tb, 0, t.n); }
+function worldCount(ev) {
+  const house = objs.find(o => o.k === 'house');
+  if (ev === 'house1') return house ? 1 : 0;
+  if (ev === 'house2') return house && house.stage >= 2 ? 1 : 0;
+  if (ev === 'house3') return house && house.stage >= 3 ? 1 : 0;
+  if (ev.startsWith('build_') && ev !== 'build_deco') { const k = ev.slice(6); return objs.filter(o => o.k === k).length; }
+  if (ev.startsWith('upg_')) { const k = ev.slice(4); return objs.some(o => o.k === k && (o.lv || 1) >= 2) ? 1 : 0; }
+  return -1;
+}
+function taskProg() { const t = curTask(); if (!t) return 0; const w = worldCount(t.ev); return clamp(Math.max((S.cnt[t.ev] || 0) - S.tb, w), 0, t.n); }
 function claimTask() {
   const t = curTask(); if (!t || taskProg() < t.n) return;
   reward(t.r, avatar.x, avatar.y - 90);
