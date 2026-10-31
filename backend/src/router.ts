@@ -3,6 +3,7 @@ import { handlePing } from "./handlers/users";
 import { handleListHouses, handlePlaceHouse } from "./handlers/houses";
 import { handleListResources, handleHarvest } from "./handlers/resources";
 import { handleListItems, handlePlaceItem } from "./handlers/items";
+import { handleListGifts, handleGiveGift } from "./handlers/gifts";
 import { requireAuth } from "./auth-middleware";
 
 export interface Env {
@@ -56,6 +57,19 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       .json<{ itemType?: unknown; slot?: unknown }>()
       .catch(() => ({}) as { itemType?: unknown; slot?: unknown });
     return handlePlaceItem(env, auth.user, Number(itemsListMatch[1]), body.itemType, body.slot);
+  }
+
+  const giftsMatch = url.pathname.match(/^\/houses\/(\d+)\/gifts$/);
+  if (request.method === "GET" && giftsMatch) {
+    return handleListGifts(env, Number(giftsMatch[1]));
+  }
+  if (request.method === "POST" && giftsMatch) {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
+    const body = await request
+      .json<{ itemType?: unknown }>()
+      .catch(() => ({}) as { itemType?: unknown });
+    return handleGiveGift(env, auth.user, Number(giftsMatch[1]), body.itemType);
   }
 
   return new Response(JSON.stringify({ error: "not_found" }), {
