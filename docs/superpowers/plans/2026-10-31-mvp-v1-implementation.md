@@ -3726,7 +3726,6 @@ git commit -m "feat(frontend): drive lighting from real-time day/night cycle and
 - Create: `frontend/CREDITS.md`
 - Modify: `frontend/src/game/houses.ts`
 - Modify: `frontend/src/game/scene.ts`
-- Modify: `frontend/src/game/terrain.ts`
 
 **Interfaces:**
 - Consumes: the image-generation skill (and optionally Higgsfield MCP) to produce seamless, tileable 2D textures.
@@ -3763,7 +3762,45 @@ Replace `wallMaterial`'s construction with `new THREE.MeshStandardMaterial({ map
 
 Modify `frontend/src/game/scene.ts` — load `ground-moss.png`, set `wrapS`/`wrapT` to `RepeatWrapping` with `repeat.set(20, 20)`, and pass it as `map` to the ground's `MeshStandardMaterial` instead of the flat `"#7a6a3a"` color.
 
-Modify `frontend/src/game/terrain.ts` — this task doesn't touch the river material (water stays a shader-free tinted plane per the spec; a stone-path material is instead applied in `houses.ts`'s `renderPaths`, replacing the `LineBasicMaterial` line segments with a thin `PlaneGeometry` ribbon per segment textured with `stone-path.png`, since a textured path reads far better than a thin colored line).
+The river material itself is untouched (water stays a shader-free tinted plane per the spec). Instead, replace `renderPaths` in `frontend/src/game/houses.ts` entirely — swapping its `THREE.Line`/`LineBasicMaterial` segments (Task 17) for a textured `PlaneGeometry` ribbon per segment, since a textured path reads far better than a thin colored line. Each segment gets its own cloned texture so its repeat count can match its own length without segments stomping on each other's tiling:
+
+```ts
+export function renderPaths(scene: THREE.Scene, houses: HouseDTO[]): void {
+  const existing = scene.getObjectByName("paths");
+  if (existing) scene.remove(existing);
+
+  const campfire: Point = { x: 0, y: 0 };
+  const housePoints: Point[] = houses.map((h) => ({ x: h.x, y: h.y }));
+  const segments = computePathSegments(housePoints, campfire);
+
+  const pathsGroup = new THREE.Group();
+  pathsGroup.name = "paths";
+  const basePathTexture = textureLoader.load("/src/assets/textures/stone-path.png");
+  basePathTexture.wrapS = basePathTexture.wrapT = THREE.RepeatWrapping;
+
+  for (const [from, to] of segments) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.hypot(dx, dy);
+
+    const segmentTexture = basePathTexture.clone();
+    segmentTexture.needsUpdate = true;
+    segmentTexture.repeat.set(1, Math.max(1, length));
+
+    const ribbonGeometry = new THREE.PlaneGeometry(0.8, length);
+    const ribbonMaterial = new THREE.MeshStandardMaterial({ map: segmentTexture });
+    const ribbon = new THREE.Mesh(ribbonGeometry, ribbonMaterial);
+    ribbon.rotation.x = -Math.PI / 2;
+    ribbon.rotation.z = -Math.atan2(dx, dy);
+    ribbon.position.set((from.x + to.x) / 2, 0.03, (from.y + to.y) / 2);
+    pathsGroup.add(ribbon);
+  }
+
+  scene.add(pathsGroup);
+}
+```
+
+This reuses the `textureLoader` already declared at module scope in `houses.ts` by Step 2 above.
 
 - [ ] **Step 4: Write the credits file**
 
