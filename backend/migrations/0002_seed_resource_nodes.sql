@@ -1,0 +1,17 @@
+INSERT INTO resource_nodes (type, x, y, available, respawns_at) VALUES
+  ('branch', 12, 8, 1, NULL),
+  ('branch', -14, 10, 1, NULL),
+  ('branch', 10, -12, 1, NULL),
+  ('branch', -11, -9, 1, NULL),
+  ('stone', 18, 2, 1, NULL),
+  ('stone', -17, 4, 1, NULL),
+  ('stone', 16, -6, 1, NULL),
+  ('stone', -15, -14, 1, NULL),
+  ('mushroom', 7, 16, 1, NULL),
+  ('mushroom', -8, 15, 1, NULL),
+  ('mushroom', 9, -18, 1, NULL),
+  ('mushroom', -6, -17, 1, NULL),
+  ('berry', 20, 12, 1, NULL),
+  ('berry', -20, 11, 1, NULL),
+  ('berry', 19, -10, 1, NULL),
+  ('berry', -19, -13, 1, NULL);
