@@ -2,6 +2,7 @@ import { handleHealth } from "./handlers/health";
 import { handlePing } from "./handlers/users";
 import { handleListHouses, handlePlaceHouse } from "./handlers/houses";
 import { handleListResources, handleHarvest } from "./handlers/resources";
+import { handleListItems, handlePlaceItem } from "./handlers/items";
 import { requireAuth } from "./auth-middleware";
 
 export interface Env {
@@ -42,6 +43,19 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     const auth = await requireAuth(request, env);
     if (!auth.ok) return auth.response;
     return handleHarvest(env, auth.user, Number(harvestMatch[1]));
+  }
+
+  const itemsListMatch = url.pathname.match(/^\/houses\/(\d+)\/items$/);
+  if (request.method === "GET" && itemsListMatch) {
+    return handleListItems(env, Number(itemsListMatch[1]));
+  }
+  if (request.method === "POST" && itemsListMatch) {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
+    const body = await request
+      .json<{ itemType?: unknown; slot?: unknown }>()
+      .catch(() => ({}) as { itemType?: unknown; slot?: unknown });
+    return handlePlaceItem(env, auth.user, Number(itemsListMatch[1]), body.itemType, body.slot);
   }
 
   return new Response(JSON.stringify({ error: "not_found" }), {
