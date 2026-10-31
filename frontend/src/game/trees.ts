@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { disposeObject3D } from "./dispose";
 
 const RIVER_HALF_WIDTH = 3;
 const FOREST_EXTENT = 90;
@@ -21,14 +22,39 @@ function isInRiver(x: number): boolean {
   return x > -RIVER_HALF_WIDTH && x < RIVER_HALF_WIDTH;
 }
 
+export interface ForestCandidate {
+  x: number;
+  z: number;
+  rotationY: number;
+  scale: number;
+}
+
+export function generateForestCandidates(seed: number, count: number): ForestCandidate[] {
+  const random = mulberry32(seed);
+  const candidates: ForestCandidate[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const x = (random() - 0.5) * FOREST_EXTENT * 2;
+    const z = (random() - 0.5) * FOREST_EXTENT * 2;
+    const rotationY = random() * Math.PI * 2;
+    const scale = 0.7 + random() * 0.6;
+    candidates.push({ x, z, rotationY, scale });
+  }
+
+  return candidates;
+}
+
 export function scatterForest(scene: THREE.Scene, clearingRadius: number): void {
   const existingForest = scene.getObjectByName("forest");
-  if (existingForest) scene.remove(existingForest);
+  if (existingForest) {
+    disposeObject3D(existingForest);
+    scene.remove(existingForest);
+  }
 
   const forestGroup = new THREE.Group();
   forestGroup.name = "forest";
 
-  const random = mulberry32(SEED);
+  const candidates = generateForestCandidates(SEED, TREE_COUNT + ROCK_COUNT);
 
   const treeGeometry = new THREE.ConeGeometry(1.2, 3, 8);
   const treeMaterial = new THREE.MeshStandardMaterial({ color: "#6b6b3a" });
@@ -43,16 +69,14 @@ export function scatterForest(scene: THREE.Scene, clearingRadius: number): void 
   let treeIndex = 0;
   let rockIndex = 0;
 
-  for (let i = 0; i < TREE_COUNT + ROCK_COUNT; i++) {
-    const x = (random() - 0.5) * FOREST_EXTENT * 2;
-    const z = (random() - 0.5) * FOREST_EXTENT * 2;
+  for (let i = 0; i < candidates.length; i++) {
+    const { x, z, rotationY, scale } = candidates[i];
     const distFromCenter = Math.hypot(x, z);
 
     if (distFromCenter < clearingRadius || isInRiver(x)) continue;
 
     dummy.position.set(x, 0, z);
-    dummy.rotation.y = random() * Math.PI * 2;
-    const scale = 0.7 + random() * 0.6;
+    dummy.rotation.y = rotationY;
     dummy.scale.set(scale, scale, scale);
     dummy.updateMatrix();
 

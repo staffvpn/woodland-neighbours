@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { disposeObject3D } from "./dispose";
 
 interface OnlineUser {
   telegramId: number;
@@ -39,7 +40,10 @@ export function renderOnlineAvatars(scene: THREE.Scene, online: OnlineUser[]): v
   if (!campfire) return;
 
   const existing = campfire.getObjectByName("onlineAvatars");
-  if (existing) campfire.remove(existing);
+  if (existing) {
+    disposeObject3D(existing);
+    campfire.remove(existing);
+  }
 
   const avatarsGroup = new THREE.Group();
   avatarsGroup.name = "onlineAvatars";

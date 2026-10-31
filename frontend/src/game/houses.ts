@@ -2,17 +2,62 @@ import * as THREE from "three";
 import { apiGet, type HouseDTO, type PlacedItemDTO } from "../api/client";
 import { computePathSegments, type Point } from "./paths";
 import { attachActivityVisuals } from "./activityVisuals";
+import { disposeObject3D } from "./dispose";
+import woodWallUrl from "../assets/textures/wood-wall.svg";
+import roofShingle1Url from "../assets/textures/roof-shingle-1.svg";
+import roofShingle2Url from "../assets/textures/roof-shingle-2.svg";
+import roofShingle3Url from "../assets/textures/roof-shingle-3.svg";
+import stonePathUrl from "../assets/textures/stone-path.svg";
 
 const textureLoader = new THREE.TextureLoader();
-const wallTexture = textureLoader.load("/src/assets/textures/wood-wall.svg");
+const wallTexture = textureLoader.load(woodWallUrl);
 wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
 wallTexture.repeat.set(2, 2);
 
 const roofTextures: Record<1 | 2 | 3, THREE.Texture> = {
-  1: textureLoader.load("/src/assets/textures/roof-shingle-1.svg"),
-  2: textureLoader.load("/src/assets/textures/roof-shingle-2.svg"),
-  3: textureLoader.load("/src/assets/textures/roof-shingle-3.svg"),
+  1: textureLoader.load(roofShingle1Url),
+  2: textureLoader.load(roofShingle2Url),
+  3: textureLoader.load(roofShingle3Url),
 };
+
+function createNicknameSprite(text: string): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "rgba(20, 20, 15, 0.6)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(2, 0.5, 1);
+  sprite.position.set(0, 3.3, 0);
+  sprite.name = "nicknameSign";
+  return sprite;
+}
+
+function attachFollowHighlight(houseGroup: THREE.Group): void {
+  const ringGeometry = new THREE.RingGeometry(1.6, 1.85, 24);
+  const ringMaterial = new THREE.MeshBasicMaterial({
+    color: "#ffd166",
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+  });
+  const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.04;
+  ring.name = "followHighlight";
+  houseGroup.add(ring);
+}
 
 export function buildHouse(shape: 1 | 2 | 3): THREE.Group {
   const group = new THREE.Group();
@@ -41,12 +86,16 @@ export function buildHouse(shape: 1 | 2 | 3): THREE.Group {
   return group;
 }
 
-export function renderHouses(scene: THREE.Scene, houses: HouseDTO[]): void {
+export function renderHouses(scene: THREE.Scene, houses: HouseDTO[], followedTelegramIds: number[] = []): void {
   const existing = scene.getObjectByName("houses");
-  if (existing) scene.remove(existing);
+  if (existing) {
+    disposeObject3D(existing);
+    scene.remove(existing);
+  }
 
   const housesGroup = new THREE.Group();
   housesGroup.name = "houses";
+  const followedSet = new Set(followedTelegramIds);
 
   for (const house of houses) {
     const houseMesh = buildHouse(house.shape);
@@ -58,6 +107,10 @@ export function renderHouses(scene: THREE.Scene, houses: HouseDTO[]): void {
       isOvergrown: house.isOvergrown,
     };
     attachActivityVisuals(houseMesh, house.hasSmoke, house.isOvergrown);
+    houseMesh.add(createNicknameSprite(house.ownerNickname));
+    if (followedSet.has(house.ownerTelegramId)) {
+      attachFollowHighlight(houseMesh);
+    }
     housesGroup.add(houseMesh);
   }
 
@@ -66,7 +119,15 @@ export function renderHouses(scene: THREE.Scene, houses: HouseDTO[]): void {
 
 export function renderPaths(scene: THREE.Scene, houses: HouseDTO[]): void {
   const existing = scene.getObjectByName("paths");
-  if (existing) scene.remove(existing);
+  if (existing) {
+    existing.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+        child.material.map?.dispose();
+      }
+    });
+    disposeObject3D(existing);
+    scene.remove(existing);
+  }
 
   const campfire: Point = { x: 0, y: 0 };
   const housePoints: Point[] = houses.map((h) => ({ x: h.x, y: h.y }));
@@ -74,7 +135,7 @@ export function renderPaths(scene: THREE.Scene, houses: HouseDTO[]): void {
 
   const pathsGroup = new THREE.Group();
   pathsGroup.name = "paths";
-  const basePathTexture = textureLoader.load("/src/assets/textures/stone-path.svg");
+  const basePathTexture = textureLoader.load(stonePathUrl);
   basePathTexture.wrapS = basePathTexture.wrapT = THREE.RepeatWrapping;
 
   for (const [from, to] of segments) {
@@ -100,7 +161,10 @@ export function renderPaths(scene: THREE.Scene, houses: HouseDTO[]): void {
 
 export function attachPlacedItemMarkers(houseGroup: THREE.Group, items: PlacedItemDTO[]): void {
   const existing = houseGroup.getObjectByName("placedItems");
-  if (existing) houseGroup.remove(existing);
+  if (existing) {
+    disposeObject3D(existing);
+    houseGroup.remove(existing);
+  }
 
   const group = new THREE.Group();
   group.name = "placedItems";

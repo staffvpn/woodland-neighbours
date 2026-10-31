@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { ResourceNodeDTO } from "../api/client";
+import { disposeObject3D } from "./dispose";
 
 const NODE_COLORS: Record<ResourceNodeDTO["type"], string> = {
   branch: "#8a5a32",
@@ -10,7 +11,10 @@ const NODE_COLORS: Record<ResourceNodeDTO["type"], string> = {
 
 export function renderResourceNodes(scene: THREE.Scene, nodes: ResourceNodeDTO[]): void {
   const existing = scene.getObjectByName("resourceNodes");
-  if (existing) scene.remove(existing);
+  if (existing) {
+    disposeObject3D(existing);
+    scene.remove(existing);
+  }
 
   const group = new THREE.Group();
   group.name = "resourceNodes";

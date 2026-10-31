@@ -14,11 +14,17 @@ export interface UserDTO {
 export interface HouseDTO {
   id: number;
   ownerTelegramId: number;
+  ownerNickname: string;
   shape: 1 | 2 | 3;
   x: number;
   y: number;
   hasSmoke: boolean;
   isOvergrown: boolean;
+}
+
+export interface InventoryDTO {
+  itemType: string;
+  qty: number;
 }
 
 export interface ResourceNodeDTO {

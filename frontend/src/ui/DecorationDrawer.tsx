@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { apiPost } from "../api/client";
+import { useEffect, useState } from "react";
+import { apiGet, apiPost, type GiftDTO } from "../api/client";
 
 const DECORATION_CATALOG = [
   "roof_moss", "porch", "woodpile", "mailbox", "flowerbed", "fence",
@@ -13,12 +13,24 @@ interface DecorationDrawerProps {
 
 export function DecorationDrawer({ houseId, onClose }: DecorationDrawerProps) {
   const [placing, setPlacing] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [gifts, setGifts] = useState<GiftDTO[]>([]);
+  const [giftsError, setGiftsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGet<GiftDTO[]>(`/houses/${houseId}/gifts`)
+      .then(setGifts)
+      .catch((err) => setGiftsError(err instanceof Error ? err.message : "Не удалось загрузить подарки"));
+  }, [houseId]);
 
   async function place(itemType: string, slot: number) {
     setPlacing(itemType);
+    setError(null);
     try {
       await apiPost(`/houses/${houseId}/items`, { itemType, slot });
       onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не получилось");
     } finally {
       setPlacing(null);
     }
@@ -31,7 +43,8 @@ export function DecorationDrawer({ houseId, onClose }: DecorationDrawerProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ color: "#fff", marginTop: 0 }}>Украсить дом</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+        {error && <p style={{ color: "#f28b82" }}>{error}</p>}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
           {DECORATION_CATALOG.map((item, index) => (
             <button
               key={item}
@@ -43,6 +56,15 @@ export function DecorationDrawer({ houseId, onClose }: DecorationDrawerProps) {
             </button>
           ))}
         </div>
+
+        <h3 style={{ color: "#fff" }}>Подарки у двери</h3>
+        {giftsError && <p style={{ color: "#f28b82" }}>{giftsError}</p>}
+        {!giftsError && gifts.length === 0 && <p style={{ color: "#cfcfcf" }}>Пока ничего не оставили.</p>}
+        <ul style={{ color: "#fff", listStyle: "none", padding: 0, margin: 0 }}>
+          {gifts.map((gift) => (
+            <li key={gift.id}>{gift.itemType}</li>
+          ))}
+        </ul>
       </div>
     </div>
   );

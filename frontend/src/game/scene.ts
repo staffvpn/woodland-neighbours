@@ -1,18 +1,23 @@
 import * as THREE from "three";
+import groundMossUrl from "../assets/textures/ground-moss.svg";
 
 export interface GameScene {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
   renderer: THREE.WebGLRenderer;
   sun: THREE.DirectionalLight;
+  wasDragged: () => boolean;
   dispose: () => void;
 }
+
+const DRAG_THRESHOLD_PX = 5;
 
 const FRUSTUM_SIZE = 40;
 
 export function createGameScene(container: HTMLElement): GameScene {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#0b1a12");
+  scene.fog = new THREE.Fog("#0b1a12", 45, 150);
 
   const aspect = container.clientWidth / container.clientHeight;
   const camera = new THREE.OrthographicCamera(
@@ -29,6 +34,10 @@ export function createGameScene(container: HTMLElement): GameScene {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
   container.appendChild(renderer.domElement);
 
   const ambient = new THREE.AmbientLight(0xffffff, 0.5);
@@ -40,7 +49,7 @@ export function createGameScene(container: HTMLElement): GameScene {
   sun.name = "sun";
   scene.add(sun);
 
-  const groundTexture = new THREE.TextureLoader().load("/src/assets/textures/ground-moss.svg");
+  const groundTexture = new THREE.TextureLoader().load(groundMossUrl);
   groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
   groundTexture.repeat.set(20, 20);
 
@@ -54,9 +63,11 @@ export function createGameScene(container: HTMLElement): GameScene {
 
   let isDragging = false;
   let previous = { x: 0, y: 0 };
+  let dragDistance = 0;
 
   function onPointerDown(event: PointerEvent) {
     isDragging = true;
+    dragDistance = 0;
     previous = { x: event.clientX, y: event.clientY };
   }
   function onPointerMove(event: PointerEvent) {
@@ -64,12 +75,16 @@ export function createGameScene(container: HTMLElement): GameScene {
     const deltaX = event.clientX - previous.x;
     const deltaY = event.clientY - previous.y;
     previous = { x: event.clientX, y: event.clientY };
+    dragDistance += Math.hypot(deltaX, deltaY);
     camera.position.x -= deltaX * 0.05;
     camera.position.z -= deltaY * 0.05;
     camera.lookAt(camera.position.x - 30, 0, camera.position.z - 30);
   }
   function onPointerUp() {
     isDragging = false;
+  }
+  function wasDragged(): boolean {
+    return dragDistance > DRAG_THRESHOLD_PX;
   }
   function onWheel(event: WheelEvent) {
     const zoomFactor = 1 + event.deltaY * 0.001;
@@ -109,5 +124,5 @@ export function createGameScene(container: HTMLElement): GameScene {
     container.removeChild(renderer.domElement);
   }
 
-  return { scene, camera, renderer, sun, dispose };
+  return { scene, camera, renderer, sun, wasDragged, dispose };
 }
