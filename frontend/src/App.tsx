@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { getTelegramWebApp } from "./telegram";
 import { createGameScene, type GameScene } from "./game/scene";
@@ -6,7 +6,9 @@ import { addRiver } from "./game/terrain";
 import { scatterForest } from "./game/trees";
 import { renderHouses, renderPaths } from "./game/houses";
 import { createCharacter } from "./game/character";
-import { apiGet, type HouseDTO } from "./api/client";
+import { renderResourceNodes, findResourceNodeIdFromIntersect } from "./game/resources";
+import { InventoryDrawer } from "./ui/InventoryDrawer";
+import { apiGet, apiPost, type HouseDTO, type ResourceNodeDTO } from "./api/client";
 
 const BASE_RADIUS = 8;
 const RADIUS_GROWTH_K = 2.2;
@@ -18,6 +20,7 @@ function settlementRadius(houseCount: number): number {
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameScene | null>(null);
+  const [inventory, setInventory] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const webApp = getTelegramWebApp();
@@ -35,6 +38,10 @@ export function App() {
       renderPaths(gameRef.current.scene, houses);
     });
 
+    apiGet<ResourceNodeDTO[]>("/resources").then((nodes) => {
+      if (gameRef.current) renderResourceNodes(gameRef.current.scene, nodes);
+    });
+
     const character = createCharacter(gameRef.current.scene, "#8B4513");
     character.group.position.set(2, 0, 2);
 
@@ -47,6 +54,22 @@ export function App() {
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(pointer, gameRef.current.camera);
+
+      const resourceGroup = gameRef.current.scene.getObjectByName("resourceNodes");
+      const resourceHits = resourceGroup ? raycaster.intersectObjects(resourceGroup.children) : [];
+      const nodeId = findResourceNodeIdFromIntersect(gameRef.current.scene, resourceHits);
+      if (nodeId !== null) {
+        apiPost<{ harvested: string }>(`/resources/${nodeId}/harvest`)
+          .then((result) => {
+            setInventory((prev) => ({ ...prev, [result.harvested]: (prev[result.harvested] ?? 0) + 1 }));
+            if (gameRef.current) {
+              apiGet<ResourceNodeDTO[]>("/resources").then((nodes) => renderResourceNodes(gameRef.current!.scene, nodes));
+            }
+          })
+          .catch(() => {});
+        return;
+      }
+
       const ground = gameRef.current.scene.getObjectByName("ground");
       if (!ground) return;
       const hits = raycaster.intersectObject(ground);
@@ -71,5 +94,10 @@ export function App() {
     };
   }, []);
 
-  return <div id="game-canvas-container" ref={containerRef} />;
+  return (
+    <>
+      <div id="game-canvas-container" ref={containerRef} />
+      <InventoryDrawer inventory={inventory} />
+    </>
+  );
 }
