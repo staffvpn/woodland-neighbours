@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { HouseDTO } from "../api/client";
 import { computePathSegments, type Point } from "./paths";
+import { attachActivityVisuals } from "./activityVisuals";
 
 const ROOF_COLORS: Record<1 | 2 | 3, string> = {
   1: "#8b4a2f",
@@ -46,6 +47,7 @@ export function renderHouses(scene: THREE.Scene, houses: HouseDTO[]): void {
     const houseMesh = buildHouse(house.shape);
     houseMesh.position.set(house.x, 0, house.y);
     houseMesh.userData = { houseId: house.id, hasSmoke: house.hasSmoke, isOvergrown: house.isOvergrown };
+    attachActivityVisuals(houseMesh, house.hasSmoke, house.isOvergrown);
     housesGroup.add(houseMesh);
   }
 
