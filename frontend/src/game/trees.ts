@@ -31,7 +31,7 @@ export function scatterForest(scene: THREE.Scene, clearingRadius: number): void 
   const random = mulberry32(SEED);
 
   const treeGeometry = new THREE.ConeGeometry(1.2, 3, 8);
-  const treeMaterial = new THREE.MeshStandardMaterial({ color: "#2f5233" });
+  const treeMaterial = new THREE.MeshStandardMaterial({ color: "#6b6b3a" });
   const treeMesh = new THREE.InstancedMesh(treeGeometry, treeMaterial, TREE_COUNT);
   treeMesh.castShadow = true;
 

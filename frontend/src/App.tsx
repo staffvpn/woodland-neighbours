@@ -11,6 +11,7 @@ import { InventoryDrawer } from "./ui/InventoryDrawer";
 import { DecorationDrawer } from "./ui/DecorationDrawer";
 import { GiftDrawer } from "./ui/GiftDrawer";
 import { buildCampfire, renderOnlineAvatars } from "./game/campfire";
+import { sunState } from "./game/daynight";
 import { apiGet, apiPost, type HouseDTO, type ResourceNodeDTO, type UserDTO } from "./api/client";
 
 const BASE_RADIUS = 8;
@@ -38,6 +39,22 @@ export function App() {
     gameRef.current = createGameScene(containerRef.current);
     addRiver(gameRef.current.scene);
     buildCampfire(gameRef.current.scene);
+
+    function updateDayNight() {
+      if (!gameRef.current) return;
+      const state = sunState(new Date());
+      gameRef.current.sun.color.set(state.colorHex);
+      gameRef.current.sun.intensity = 0.3 + state.intensity * 0.9;
+      gameRef.current.sun.position.set(
+        20 * Math.cos((state.elevationDeg * Math.PI) / 180),
+        Math.max(5, 30 * Math.sin((state.elevationDeg * Math.PI) / 180)),
+        10,
+      );
+      const bg = state.intensity > 0.1 ? "#2e4a24" : "#0b1a12";
+      gameRef.current.scene.background = new THREE.Color(bg);
+    }
+    updateDayNight();
+    const dayNightInterval = setInterval(updateDayNight, 60_000);
 
     function pollOnline() {
       apiGet<{ telegramId: number; nickname: string }[]>("/campfire/online").then((online) => {
@@ -122,6 +139,7 @@ export function App() {
     return () => {
       cancelAnimationFrame(characterFrame);
       clearInterval(onlineInterval);
+      clearInterval(dayNightInterval);
       gameRef.current?.renderer.domElement.removeEventListener("click", onClick);
       gameRef.current?.dispose();
     };

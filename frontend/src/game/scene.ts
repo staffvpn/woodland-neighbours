@@ -4,6 +4,7 @@ export interface GameScene {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
   renderer: THREE.WebGLRenderer;
+  sun: THREE.DirectionalLight;
   dispose: () => void;
 }
 
@@ -40,7 +41,7 @@ export function createGameScene(container: HTMLElement): GameScene {
   scene.add(sun);
 
   const groundGeometry = new THREE.PlaneGeometry(200, 200);
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: "#3d5a33" });
+  const groundMaterial = new THREE.MeshStandardMaterial({ color: "#7a6a3a" });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
@@ -104,5 +105,5 @@ export function createGameScene(container: HTMLElement): GameScene {
     container.removeChild(renderer.domElement);
   }
 
-  return { scene, camera, renderer, dispose };
+  return { scene, camera, renderer, sun, dispose };
 }
