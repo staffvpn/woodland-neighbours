@@ -31,6 +31,8 @@
   --sb:env(safe-area-inset-bottom,0px);
   --sl:env(safe-area-inset-left,0px);
   --sr:env(safe-area-inset-right,0px);
+  --sa:0px;
+  --ca:0px;
   color-scheme:dark;
 }
 html,body{height:100%;margin:0;background:var(--bg);color:var(--cream);overflow:hidden;font-family:var(--body);overscroll-behavior:none}
@@ -155,6 +157,11 @@ button:focus-visible{outline:2px solid var(--honey);outline-offset:2px}
 .sw button[aria-pressed="true"]{outline:2px solid var(--honey);outline-offset:2px}
 .err{margin:0;font-size:13px;color:#ff9c84}
 @media (max-width:760px){.creator{grid-template-columns:minmax(0,1fr);align-items:start}#crCanvas{width:200px;height:240px;aspect-ratio:auto}.cr-opts canvas{height:74px}}
+.tgfull .pills{position:absolute;top:calc(var(--sa) + (var(--ca) - 30px) / 2);left:max(112px,calc(var(--sl) + 112px));right:max(94px,calc(var(--sr) + 94px));justify-content:center;gap:4px}
+.tgfull .pill{height:30px;padding:0 8px 0 4px;gap:3px;font-size:14px;border-radius:15px}
+.tgfull .pill svg{width:19px;height:19px}
+.tgfull .pill small{display:inline!important;font-size:10px;margin-left:0}
+.tgfull .tracker{top:calc(var(--st) + 8px);left:calc(max(12px,var(--sl)) + 66px);max-width:calc(100% - 90px)}
 @media (max-width:390px){.pill{padding:0 9px 0 6px;font-size:16px;height:38px;gap:4px}.pill svg{width:22px;height:22px}.pill small{display:none}.top{gap:6px}.dock button{font-size:13px}.dock button svg{width:30px;height:30px}}
 </style>
 
@@ -350,7 +357,8 @@ function applyInsets() {
   const full = !!tg.isFullscreen, mob = /android|ios/.test(tg.platform || '');
   let top = (a.top || 0) + Math.max(c.top || 0, full && mob ? 52 : 0);
   if (full && mob && !(a.top > 0)) top = Math.max(top, 86);
-  r.setProperty('--st', top + 'px'); r.setProperty('--sb', ((a.bottom || 0) + (c.bottom || 0)) + 'px');
+  r.setProperty('--st', top + 'px'); r.setProperty('--sa', (a.top || 0) + 'px'); r.setProperty('--ca', Math.max(c.top || 0, 44) + 'px');
+  document.getElementById('app').classList.toggle('tgfull', full && mob); r.setProperty('--sb', ((a.bottom || 0) + (c.bottom || 0)) + 'px');
   r.setProperty('--sl', ((a.left || 0) + (c.left || 0)) + 'px'); r.setProperty('--sr', ((a.right || 0) + (c.right || 0)) + 'px');
 }
 if (tg) {
@@ -1149,11 +1157,12 @@ let toastT = 0;
 function toast(msg, bad) { const el = $('toast'); el.textContent = msg; el.className = 'toast' + (bad ? ' bad' : ''); el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2400); }
 function fmt(sec) { sec = Math.max(0, Math.ceil(sec)); const m = Math.floor(sec / 60), s = sec % 60; return m >= 60 ? Math.floor(m / 60) + ' ч ' + (m % 60) + ' мин' : m + ':' + String(s).padStart(2, '0'); }
 function hud() {
-  $('enNum').textContent = S.en + '/' + EN_MAX;
-  $('coinNum').textContent = S.coins.toLocaleString('ru-RU'); $('gemNum').textContent = S.gems;
+  const compact = $('app').classList.contains('tgfull');
+  $('enNum').textContent = compact ? S.en : S.en + '/' + EN_MAX;
+  $('coinNum').textContent = compact && S.coins >= 10000 ? (Math.floor(S.coins / 100) / 10).toLocaleString('ru-RU') + 'к' : S.coins.toLocaleString('ru-RU'); $('gemNum').textContent = S.gems;
   $('lvl').textContent = S.lvl;
   const a = LV[S.lvl - 1] || 0, b = LV[S.lvl] || a + 1000; $('btnMe').style.setProperty('--xp', Math.round((S.xp - a) / (b - a) * 100));
-  $('enT').textContent = S.en < EN_MAX ? fmt(EN_SEC - ((now() - S.enT) / 1000) % EN_SEC) : '';
+  $('enT').textContent = S.en < EN_MAX ? fmt(EN_SEC - ((now() - S.enT) / 1000) % EN_SEC) : (compact ? '/' + EN_MAX : '');
 }
 function taskUi() {
   const t = curTask(), tr = $('tracker');
