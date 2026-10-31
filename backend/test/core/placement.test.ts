@@ -7,6 +7,9 @@ import {
   FOUNDER_POSITION,
   RING_ANGLE_STEP_DEG,
   RING_RADIAL_STEP,
+  RIVER_HALF_WIDTH,
+  HOUSE_HALF_WIDTH,
+  isFarEnoughFromAll,
 } from "../../src/core/placement";
 
 describe("isInRiver", () => {
@@ -83,5 +86,33 @@ describe("FOUNDER_POSITION", () => {
   it("is outside the river and close to the campfire at the origin", () => {
     expect(isInRiver(FOUNDER_POSITION)).toBe(false);
     expect(Math.hypot(FOUNDER_POSITION.x, FOUNDER_POSITION.y)).toBeLessThan(10);
+  });
+
+  it("leaves house-footprint clearance from the river, not just its center point", () => {
+    expect(Math.abs(FOUNDER_POSITION.x)).toBeGreaterThanOrEqual(RIVER_HALF_WIDTH + HOUSE_HALF_WIDTH);
+  });
+});
+
+describe("findHousePlacement river clearance (I1 fix)", () => {
+  it("never returns a point whose house footprint would overlap the river", () => {
+    for (let i = 0; i < 20; i++) {
+      const existing = Array.from({ length: i }, (_, idx) => ({ x: idx * 5, y: idx % 2 === 0 ? 5 : -5 }));
+      const point = findHousePlacement(existing);
+      expect(Math.abs(point.x)).toBeGreaterThanOrEqual(RIVER_HALF_WIDTH + HOUSE_HALF_WIDTH);
+    }
+  });
+});
+
+describe("isFarEnoughFromAll", () => {
+  it("is true when no house is within MIN_HOUSE_DISTANCE", () => {
+    expect(isFarEnoughFromAll({ x: 100, y: 100 }, [{ x: 0, y: 0 }])).toBe(true);
+  });
+
+  it("is false when a house is within MIN_HOUSE_DISTANCE", () => {
+    expect(isFarEnoughFromAll({ x: 1, y: 0 }, [{ x: 0, y: 0 }])).toBe(false);
+  });
+
+  it("is true for an empty house list", () => {
+    expect(isFarEnoughFromAll({ x: 0, y: 0 }, [])).toBe(true);
   });
 });

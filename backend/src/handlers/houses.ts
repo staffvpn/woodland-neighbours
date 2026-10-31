@@ -1,6 +1,6 @@
 import type { Env } from "../router";
 import type { TelegramUser } from "../core/auth";
-import { findHousePlacement, FOUNDER_POSITION } from "../core/placement";
+import { findHousePlacement, FOUNDER_POSITION, isFarEnoughFromAll } from "../core/placement";
 import { hasSmoke, isOvergrown } from "../core/activity";
 
 interface HouseRow {
@@ -56,7 +56,8 @@ export async function handlePlaceHouse(env: Env, user: TelegramUser, shape: unkn
   const rows = await env.DB.prepare("SELECT x, y FROM houses").all<{ x: number; y: number }>();
   const existingHouses = rows.results ?? [];
 
-  const point = userRow?.is_founder === 1 ? FOUNDER_POSITION : findHousePlacement(existingHouses);
+  const founderPositionFree = userRow?.is_founder === 1 && isFarEnoughFromAll(FOUNDER_POSITION, existingHouses);
+  const point = founderPositionFree ? FOUNDER_POSITION : findHousePlacement(existingHouses);
 
   const now = Date.now();
   await env.DB.prepare(

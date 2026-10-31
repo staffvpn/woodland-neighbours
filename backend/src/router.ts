@@ -6,14 +6,16 @@ import { handleListItems, handlePlaceItem } from "./handlers/items";
 import { handleListGifts, handleGiveGift } from "./handlers/gifts";
 import { handleFollow, handleUnfollow, handleListFollows } from "./handlers/follows";
 import { handleCampfireOnline } from "./handlers/campfire";
+import { handleListInventory } from "./handlers/inventory";
 import { requireAuth } from "./auth-middleware";
+import { withCors } from "./core/cors";
 
 export interface Env {
   DB: D1Database;
   BOT_TOKEN: string;
 }
 
-export async function handleRequest(request: Request, env: Env): Promise<Response> {
+async function routeRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
 
   if (request.method === "GET" && url.pathname === "/health") {
@@ -27,6 +29,8 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   }
 
   if (request.method === "GET" && url.pathname === "/houses") {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
     return handleListHouses(env);
   }
 
@@ -38,6 +42,8 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   }
 
   if (request.method === "GET" && url.pathname === "/resources") {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
     return handleListResources(env);
   }
 
@@ -50,6 +56,8 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
 
   const itemsListMatch = url.pathname.match(/^\/houses\/(\d+)\/items$/);
   if (request.method === "GET" && itemsListMatch) {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
     return handleListItems(env, Number(itemsListMatch[1]));
   }
   if (request.method === "POST" && itemsListMatch) {
@@ -63,6 +71,8 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
 
   const giftsMatch = url.pathname.match(/^\/houses\/(\d+)\/gifts$/);
   if (request.method === "GET" && giftsMatch) {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
     return handleListGifts(env, Number(giftsMatch[1]));
   }
   if (request.method === "POST" && giftsMatch) {
@@ -75,7 +85,15 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   }
 
   if (request.method === "GET" && url.pathname === "/campfire/online") {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
     return handleCampfireOnline(env);
+  }
+
+  if (request.method === "GET" && url.pathname === "/inventory") {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
+    return handleListInventory(env, auth.user);
   }
 
   if (request.method === "GET" && url.pathname === "/follows") {
@@ -97,4 +115,18 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     status: 404,
     headers: { "content-type": "application/json" },
   });
+}
+
+export async function handleRequest(request: Request, env: Env): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return withCors(new Response(null, { status: 204 }));
+  }
+
+  try {
+    const response = await routeRequest(request, env);
+    return withCors(response);
+  } catch (error) {
+    console.error(error);
+    return withCors(Response.json({ error: "internal_error" }, { status: 500 }));
+  }
 }

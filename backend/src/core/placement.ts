@@ -5,6 +5,7 @@ export interface Point {
 
 export const RIVER_HALF_WIDTH = 3;
 export const MIN_HOUSE_DISTANCE = 4;
+export const HOUSE_HALF_WIDTH = 1.2;
 
 const BASE_RADIUS = 8;
 const RADIUS_GROWTH_K = 2.2;
@@ -17,11 +18,15 @@ export function isInRiver(p: Point): boolean {
   return p.x > -RIVER_HALF_WIDTH && p.x < RIVER_HALF_WIDTH;
 }
 
+function overlapsRiverWithHouseFootprint(p: Point): boolean {
+  return Math.abs(p.x) < RIVER_HALF_WIDTH + HOUSE_HALF_WIDTH;
+}
+
 export function settlementRadius(houseCount: number): number {
   return BASE_RADIUS + RADIUS_GROWTH_K * Math.sqrt(houseCount);
 }
 
-function isFarEnoughFromAll(p: Point, existingHouses: Point[]): boolean {
+export function isFarEnoughFromAll(p: Point, existingHouses: Point[]): boolean {
   return existingHouses.every((house) => Math.hypot(p.x - house.x, p.y - house.y) >= MIN_HOUSE_DISTANCE);
 }
 
@@ -39,7 +44,7 @@ export function findHousePlacement(existingHouses: Point[]): Point {
         y: Math.sin(angleRad) * radius,
       };
 
-      if (isInRiver(candidate)) continue;
+      if (overlapsRiverWithHouseFootprint(candidate)) continue;
       if (!isFarEnoughFromAll(candidate, existingHouses)) continue;
 
       return candidate;
