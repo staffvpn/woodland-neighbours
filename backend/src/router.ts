@@ -1,6 +1,7 @@
 import { handleHealth } from "./handlers/health";
 import { handlePing } from "./handlers/users";
 import { handleListHouses, handlePlaceHouse } from "./handlers/houses";
+import { handleListResources, handleHarvest } from "./handlers/resources";
 import { requireAuth } from "./auth-middleware";
 
 export interface Env {
@@ -30,6 +31,17 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     if (!auth.ok) return auth.response;
     const body = await request.json<{ shape?: unknown }>().catch(() => ({}) as { shape?: unknown });
     return handlePlaceHouse(env, auth.user, body.shape);
+  }
+
+  if (request.method === "GET" && url.pathname === "/resources") {
+    return handleListResources(env);
+  }
+
+  const harvestMatch = url.pathname.match(/^\/resources\/(\d+)\/harvest$/);
+  if (request.method === "POST" && harvestMatch) {
+    const auth = await requireAuth(request, env);
+    if (!auth.ok) return auth.response;
+    return handleHarvest(env, auth.user, Number(harvestMatch[1]));
   }
 
   return new Response(JSON.stringify({ error: "not_found" }), {
