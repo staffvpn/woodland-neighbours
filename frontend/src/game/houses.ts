@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { HouseDTO } from "../api/client";
+import { apiGet, type HouseDTO, type PlacedItemDTO } from "../api/client";
 import { computePathSegments, type Point } from "./paths";
 import { attachActivityVisuals } from "./activityVisuals";
 
@@ -46,7 +46,12 @@ export function renderHouses(scene: THREE.Scene, houses: HouseDTO[]): void {
   for (const house of houses) {
     const houseMesh = buildHouse(house.shape);
     houseMesh.position.set(house.x, 0, house.y);
-    houseMesh.userData = { houseId: house.id, hasSmoke: house.hasSmoke, isOvergrown: house.isOvergrown };
+    houseMesh.userData = {
+      houseId: house.id,
+      ownerTelegramId: house.ownerTelegramId,
+      hasSmoke: house.hasSmoke,
+      isOvergrown: house.isOvergrown,
+    };
     attachActivityVisuals(houseMesh, house.hasSmoke, house.isOvergrown);
     housesGroup.add(houseMesh);
   }
@@ -73,4 +78,39 @@ export function renderPaths(scene: THREE.Scene, houses: HouseDTO[]): void {
   }
 
   scene.add(pathsGroup);
+}
+
+export function attachPlacedItemMarkers(houseGroup: THREE.Group, items: PlacedItemDTO[]): void {
+  const existing = houseGroup.getObjectByName("placedItems");
+  if (existing) houseGroup.remove(existing);
+
+  const group = new THREE.Group();
+  group.name = "placedItems";
+
+  items.forEach((item, index) => {
+    const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+    const material = new THREE.MeshStandardMaterial({ color: "#d9a441" });
+    const marker = new THREE.Mesh(geometry, material);
+    const angle = (index / Math.max(items.length, 1)) * Math.PI * 2;
+    marker.position.set(Math.cos(angle) * 1.6, 0.15, Math.sin(angle) * 1.6 + 1.5);
+    marker.userData = { itemType: item.itemType };
+    group.add(marker);
+  });
+
+  houseGroup.add(group);
+}
+
+export async function loadAndRenderPlacedItems(scene: THREE.Scene, houses: HouseDTO[]): Promise<void> {
+  const housesGroup = scene.getObjectByName("houses");
+  if (!housesGroup) return;
+
+  await Promise.all(
+    houses.map(async (house) => {
+      const items = await apiGet<PlacedItemDTO[]>(`/houses/${house.id}/items`);
+      const houseMesh = housesGroup.children.find((child) => child.userData.houseId === house.id);
+      if (houseMesh instanceof THREE.Group) {
+        attachPlacedItemMarkers(houseMesh, items);
+      }
+    }),
+  );
 }

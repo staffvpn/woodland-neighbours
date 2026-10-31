@@ -4,11 +4,13 @@ import { getTelegramWebApp } from "./telegram";
 import { createGameScene, type GameScene } from "./game/scene";
 import { addRiver } from "./game/terrain";
 import { scatterForest } from "./game/trees";
-import { renderHouses, renderPaths } from "./game/houses";
+import { renderHouses, renderPaths, loadAndRenderPlacedItems } from "./game/houses";
 import { createCharacter } from "./game/character";
 import { renderResourceNodes, findResourceNodeIdFromIntersect } from "./game/resources";
 import { InventoryDrawer } from "./ui/InventoryDrawer";
-import { apiGet, apiPost, type HouseDTO, type ResourceNodeDTO } from "./api/client";
+import { DecorationDrawer } from "./ui/DecorationDrawer";
+import { GiftDrawer } from "./ui/GiftDrawer";
+import { apiGet, apiPost, type HouseDTO, type ResourceNodeDTO, type UserDTO } from "./api/client";
 
 const BASE_RADIUS = 8;
 const RADIUS_GROWTH_K = 2.2;
@@ -21,6 +23,10 @@ export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<GameScene | null>(null);
   const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [currentUser, setCurrentUser] = useState<UserDTO | null>(null);
+  const [openHouseId, setOpenHouseId] = useState<number | null>(null);
+  const [openHouseOwnerId, setOpenHouseOwnerId] = useState<number | null>(null);
+  const loadedHousesRef = useRef<HouseDTO[]>([]);
 
   useEffect(() => {
     const webApp = getTelegramWebApp();
@@ -36,7 +42,11 @@ export function App() {
       scatterForest(gameRef.current.scene, settlementRadius(houses.length));
       renderHouses(gameRef.current.scene, houses);
       renderPaths(gameRef.current.scene, houses);
+      loadedHousesRef.current = houses;
+      loadAndRenderPlacedItems(gameRef.current.scene, houses);
     });
+
+    apiPost<UserDTO>("/users/ping").then(setCurrentUser);
 
     apiGet<ResourceNodeDTO[]>("/resources").then((nodes) => {
       if (gameRef.current) renderResourceNodes(gameRef.current.scene, nodes);
@@ -54,6 +64,18 @@ export function App() {
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(pointer, gameRef.current.camera);
+
+      const housesGroup = gameRef.current.scene.getObjectByName("houses");
+      const houseHits = housesGroup ? raycaster.intersectObjects(housesGroup.children, true) : [];
+      if (houseHits.length > 0) {
+        let node: THREE.Object3D | null = houseHits[0].object;
+        while (node && node.userData.houseId === undefined) node = node.parent;
+        if (node) {
+          setOpenHouseId(node.userData.houseId as number);
+          setOpenHouseOwnerId(node.userData.ownerTelegramId as number);
+        }
+        return;
+      }
 
       const resourceGroup = gameRef.current.scene.getObjectByName("resourceNodes");
       const resourceHits = resourceGroup ? raycaster.intersectObjects(resourceGroup.children) : [];
@@ -98,6 +120,18 @@ export function App() {
     <>
       <div id="game-canvas-container" ref={containerRef} />
       <InventoryDrawer inventory={inventory} />
+      {openHouseId !== null && currentUser && openHouseOwnerId === currentUser.telegramId && (
+        <DecorationDrawer
+          houseId={openHouseId}
+          onClose={() => {
+            setOpenHouseId(null);
+            if (gameRef.current) loadAndRenderPlacedItems(gameRef.current.scene, loadedHousesRef.current);
+          }}
+        />
+      )}
+      {openHouseId !== null && currentUser && openHouseOwnerId !== null && openHouseOwnerId !== currentUser.telegramId && (
+        <GiftDrawer houseId={openHouseId} targetTelegramId={openHouseOwnerId} onClose={() => setOpenHouseId(null)} />
+      )}
     </>
   );
 }
