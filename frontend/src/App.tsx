@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { getTelegramWebApp } from "./telegram";
 import { createGameScene, type GameScene } from "./game/scene";
+import { addRiver } from "./game/terrain";
 
 export function App() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -13,6 +14,7 @@ export function App() {
 
     if (containerRef.current) {
       gameRef.current = createGameScene(containerRef.current);
+      addRiver(gameRef.current.scene);
     }
     return () => gameRef.current?.dispose();
   }, []);
