@@ -5,4 +5,4 @@ compatibility_date = "2026-10-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "woodland-neighbours"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "61ca003c-43a2-40f8-aeb1-d25b7ff1f1ae"
